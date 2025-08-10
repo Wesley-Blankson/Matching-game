@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Matching Game — MVP with Effects</title>
+<title>Matching Game — MVP with Effects + Sound</title>
 <style>
   :root{
     --bg:#0b1020; --line:#1d2843; --muted:#94a3b8; --text:#e5e7eb;
@@ -33,12 +33,7 @@
   #score.pulse{animation:scorePulse 360ms ease-out}
   @keyframes scorePulse{0%{transform:scale(1);color:#e5e7eb}40%{transform:scale(1.25);color:#5eead4}100%{transform:scale(1);color:#e5e7eb}}
   .foot{margin-top:12px;color:var(--muted);font-size:13px}
-
-  /* Confetti particles */
-  .confetti{
-    position:fixed; pointer-events:none; width:8px; height:8px; border-radius:2px; opacity:.9;
-    will-change: transform, opacity;
-  }
+  .confetti{position:fixed; pointer-events:none; width:8px; height:8px; border-radius:2px; opacity:.9; will-change: transform, opacity;}
 </style>
 </head>
 <body>
@@ -66,6 +61,9 @@
 </main>
 
 <script>
+  // --- Bell sound for matches ---
+  const matchDing = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3');
+
   // --- Data ---
   const SETS = {
     terms: [
@@ -173,6 +171,10 @@
       const c1 = centerOf(el), c2 = centerOf(first.el);
       confettiBurst((c1.x + c2.x)/2, (c1.y + c2.y)/2);
 
+      // 🔔 Play bell sound
+      matchDing.currentTime = 0;
+      matchDing.play();
+
       setTimeout(()=>{
         first.el.classList.remove('selected'); el.classList.remove('selected');
         afterPick();
@@ -190,7 +192,6 @@
     function afterPick(){
       first=null; lock=false;
       scoreEl.textContent=score; streakEl.textContent=streak; foundEl.textContent=found;
-      // Optional: small page flash on full clear
       if(found===totalPairs){
         document.body.animate([{filter:'brightness(1)'},{filter:'brightness(1.1)'},{filter:'brightness(1)'}],{duration:500,iterations:2});
       }
