@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Matching Game — Tiny MVP</title>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#0b1020;color:#e5e7eb}
+  header{padding:14px 16px;border-bottom:1px solid #1d2843;position:sticky;top:0;background:#0b1020cc;backdrop-filter:blur(6px)}
+  .wrap{max-width:900px;margin:0 auto;padding:16px}
+  h1{font-size:18px;margin:0 0 6px}
+  .sub{margin:0;color:#94a3b8;font-size:13px}
+  .hud{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .box{border:1px solid #1d2843;background:#0b1226;border-radius:10px;padding:6px 10px;font-size:14px}
+  select,button{border:1px solid #1d2843;background:#0b1226;color:#e5e7eb;border-radius:10px;padding:8px 10px}
+  button.primary{background:linear-gradient(90deg,#38bdf8,#22d3ee);color:#001018;border:none;font-weight:800}
+  .grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-top:14px}
+  .card{user-select:none;border:1px solid #1d2843;background:#0b1226;border-radius:12px;padding:14px;min-height:86px;
+        display:flex;align-items:center;justify-content:center;text-align:center;transition:.12s}
+  .card.selected{outline:2px solid #22d3ee;outline-offset:-2px}
+  .card.correct{background:rgba(16,185,129,.15);border-color:#14532d}
+  .card.wrong{background:rgba(239,68,68,.08);border-color:#7f1d1d}
+  .foot{margin-top:12px;color:#94a3b8;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Matching Game — Tiny MVP</h1>
+    <p class="sub">Tap two cards that belong together. Correct = lock + points. Clear the board to win.</p>
+    <div class="hud">
+      <div class="box">Score: <span id="score">0</span></div>
+      <div class="box">Matches: <span id="found">0</span>/<span id="total">0</span></div>
+      <div class="box">Streak: <span id="streak">0</span></div>
+      <select id="setSelect">
+        <option value="terms">Terms ↔ Definitions</option>
+        <option value="concepts">Concepts ↔ Examples</option>
+      </select>
+      <button id="newRound" class="primary">New round</button>
+      <button id="reset">Reset score</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="grid" class="grid"></div>
+  <p class="foot">We can add images, a timer, or your own study sets next.</p>
+</main>
+
+<script>
+  const SETS = {
+    terms: [
+      ["Photosynthesis","Plants make food using light"],
+      ["Neuron","A nerve cell that transmits signals"],
+      ["Velocity","Speed with direction"],
+      ["Osmosis","Water diffusion across a membrane"],
+      ["Mitochondria","Cell's energy producer"],
+      ["Gravity","Attraction between masses"]
+    ],
+    concepts: [
+      ["Metaphor","'Time is a thief.'"],
+      ["Alliteration","'Wild winds whistle'"],
+      ["Simile","'As light as a feather'"],
+      ["Hyperbole","'I'm so hungry I could eat a horse'"],
+      ["Oxymoron","'Deafening silence'"],
+      ["Onomatopoeia","'Buzz', 'clang', 'sizzle'"]
+    ]
+  };
+
+  let deck=[], first=null, lock=false, score=0, found=0, totalPairs=0, streak=0;
+  const grid = document.getElementById('grid');
+  const scoreEl = document.getElementById('score');
+  const foundEl = document.getElementById('found');
+  const totalEl = document.getElementById('total');
+  const streakEl = document.getElementById('streak');
+  const setSelect = document.getElementById('setSelect');
+  const btnNew = document.getElementById('newRound');
+  const btnReset = document.getElementById('reset');
+
+  function uid(){ return 'id_'+Math.random().toString(36).slice(2); }
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+  function buildDeck(pairs){
+    totalPairs = pairs.length;
+    const cards=[];
+    pairs.forEach((p,idx)=>{
+      cards.push({id:uid(),text:p[0],pairId:idx,side:0});
+      cards.push({id:uid(),text:p[1],pairId:idx,side:1});
+    });
+    return shuffle(cards);
+  }
+
+  function render(){
+    grid.innerHTML='';
+    deck.forEach(card=>{
+      const div=document.createElement('div');
+      div.className='card';
+      div.textContent=card.text;
+      div.addEventListener('click',()=>onCardClick(div,card));
+      grid.appendChild(div);
+    });
+    scoreEl.textContent=score; foundEl.textContent=found; totalEl.textContent=totalPairs; streakEl.textContent=streak;
+  }
+
+  function onCardClick(el,card){
+    if(lock||el.classList.contains('correct')) return;
+    if(!first){ first={el,card}; el.classList.add('selected'); return; }
+    if(first.card.id===card.id){ first.el.classList.remove('selected'); first=null; return; }
+    el.classList.add('selected'); lock=true;
+
+    if(first.card.pairId===card.pairId && first.card.side!==card.side){
+      streak+=1; score+=10+Math.min(20,streak*2); found+=1;
+      first.el.classList.add('correct'); el.classList.add('correct');
+      setTimeout(()=>{ first.el.classList.remove('selected'); el.classList.remove('selected'); afterPick(); },150);
+    }else{
+      streak=0; score=Math.max(0,score-2);
+      first.el.classList.add('wrong'); el.classList.add('wrong');
+      setTimeout(()=>{ first.el.classList.remove('selected','wrong'); el.classList.remove('selected','wrong'); afterPick(); },350);
+    }
+    function afterPick(){ first=null; lock=false; scoreEl.textContent=score; streakEl.textContent=streak; foundEl.textContent=found; }
+  }
+
+  function newRound(){
+    found=0; streak=0;
+    const pairs = SETS[setSelect.value];
+    deck = buildDeck(pairs);
+    render();
+  }
+  function resetAll(){ score=0; newRound(); }
+
+  btnNew.addEventListener('click', newRound);
+  btnReset.addEventListener('click', resetAll);
+  setSelect.addEventListener('change', newRound);
+
+  newRound();
+</script>
+</body>
+</html>
