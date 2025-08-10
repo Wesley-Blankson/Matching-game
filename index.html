@@ -63,7 +63,14 @@
 <script>
   // --- Bell sound for matches ---
   const matchDing = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3');
-
+// Unlock sound on first user interaction
+function unlockSound() {
+  matchDing.play().catch(()=>{}); // try playing (may fail silently)
+  matchDing.pause();
+  matchDing.currentTime = 0;
+  document.removeEventListener('click', unlockSound);
+}
+document.addEventListener('click', unlockSound, { once: true });
   // --- Data ---
   const SETS = {
     terms: [
